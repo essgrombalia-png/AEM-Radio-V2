@@ -2038,12 +2038,38 @@
     return { init, selectStationById, togglePlay, playAdjacent, playRandom };
   })();
 
+  function initLiveClock() {
+    const dateEl = document.getElementById('live-clock-date');
+    const timeEl = document.getElementById('live-clock-time');
+    if (!dateEl || !timeEl) return;
+
+    function updateClock() {
+      const now = new Date();
+      const dateOptions = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
+      let dateFormatted = now.toLocaleDateString('sv-SE', dateOptions);
+      dateFormatted = dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1);
+
+      const timeFormatted = now.toLocaleTimeString('sv-SE', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+      dateEl.textContent = dateFormatted;
+      timeEl.textContent = timeFormatted;
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+  }
+
   /* ==========================================================================
      BOOTSTRAP
      ========================================================================== */
   document.addEventListener('DOMContentLoaded', async () => {
     await Auth.init();
     UI.renderAll();
+    initLiveClock();
     if (Store.get(STORAGE_KEYS.siteContent, null)) applySiteContent();
     UI.syncAccountUI();
     Events.init();
