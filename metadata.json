@@ -1,0 +1,6 @@
+{
+  "name": "AEM Radio Player",
+  "description": "A modern web-based radio player for listening to live internet broadcasts, saving favorites, and discovering stations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
