@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="clubGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#4facfe"/>
+      <stop offset="100%" stop-color="#6b11ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" rx="40" fill="#070914"/>
+  <circle cx="150" cy="150" r="110" fill="none" stroke="url(#clubGlow)" stroke-width="3" opacity="0.4"/>
+  <circle cx="150" cy="150" r="85" fill="none" stroke="url(#clubGlow)" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.6"/>
+  <g transform="skewX(-8)">
+    <text x="150" y="135" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="36" fill="#ffffff" text-anchor="middle" letter-spacing="1">POWER</text>
+    <text x="150" y="180" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="44" fill="url(#clubGlow)" text-anchor="middle" letter-spacing="2">CLUB</text>
+  </g>
+  <rect x="75" y="200" width="150" height="4" rx="2" fill="url(#clubGlow)"/>
+  <text x="150" y="238" font-family="'Inter', sans-serif" font-weight="600" font-size="13" fill="#80d8ff" text-anchor="middle" letter-spacing="3">HOUSE &amp; TECHNO</text>
+</svg>

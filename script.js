@@ -293,8 +293,21 @@
     heroSub: 'AEM Radio Player samlar livesändningar från hela världen i ett snyggt, snabbt och helt gratis gränssnitt — inga konton, ingen backend.'
   };
 
+  function getMergedStations() {
+    const defaults = (window.STATIONS || []).slice();
+    const stored = Store.get(STORAGE_KEYS.customStations, null);
+    if (!stored || !Array.isArray(stored)) return defaults;
+    const defaultIds = new Set(defaults.map(s => s.id));
+    const extraCustom = stored.filter(s => !defaultIds.has(s.id));
+    const mergedDefaults = defaults.map(d => {
+      const match = stored.find(s => s.id === d.id);
+      return match ? { ...d, ...match } : d;
+    });
+    return [...mergedDefaults, ...extraCustom];
+  }
+
   const State = {
-    stations: Store.get(STORAGE_KEYS.customStations, null) || (window.STATIONS || []).slice(),
+    stations: getMergedStations(),
     genres: window.GENRES || ['All'],
     siteContent: Store.get(STORAGE_KEYS.siteContent, null) || { ...DEFAULT_SITE_CONTENT },
     currentView: 'home',

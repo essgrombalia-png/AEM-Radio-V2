@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe082"/>
+      <stop offset="50%" stop-color="#ffb300"/>
+      <stop offset="100%" stop-color="#ff8f00"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" rx="40" fill="#140f0a"/>
+  <circle cx="150" cy="150" r="115" fill="#1f1810" stroke="#332617" stroke-width="2"/>
+  <circle cx="150" cy="150" r="95" fill="none" stroke="#2a2015" stroke-width="1.5"/>
+  <circle cx="150" cy="150" r="75" fill="none" stroke="#3d2e1d" stroke-width="1.5"/>
+  <circle cx="150" cy="150" r="50" fill="url(#goldGrad)"/>
+  <circle cx="150" cy="150" r="12" fill="#140f0a"/>
+  <text x="150" y="75" font-family="'Sora', sans-serif" font-weight="800" font-size="28" fill="url(#goldGrad)" text-anchor="middle" letter-spacing="2">GAMLA</text>
+  <text x="150" y="245" font-family="'Sora', sans-serif" font-weight="800" font-size="24" fill="#ffffff" text-anchor="middle" letter-spacing="3">FAVORITER</text>
+  <text x="150" y="268" font-family="'Inter', sans-serif" font-weight="500" font-size="12" fill="#ffcc80" text-anchor="middle" letter-spacing="2">60s • 70s • 80s KLASSIKER</text>
+</svg>

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="freshBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#003b46"/>
+      <stop offset="100%" stop-color="#07575b"/>
+    </linearGradient>
+    <linearGradient id="freshTeal" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#4facfe"/>
+    </linearGradient>
+    <linearGradient id="limeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a8ff78"/>
+      <stop offset="100%" stop-color="#78ffd6"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" rx="40" fill="#04151f"/>
+  <rect width="280" height="280" x="10" y="10" rx="32" fill="url(#freshBg)" opacity="0.6"/>
+  <circle cx="230" cy="70" r="30" fill="url(#freshTeal)" opacity="0.25"/>
+  <circle cx="210" cy="90" r="15" fill="url(#limeGrad)" opacity="0.3"/>
+  <text x="30" y="145" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="52" fill="#ffffff" letter-spacing="-2">RIX <tspan fill="url(#freshTeal)">FM</tspan></text>
+  <rect x="30" y="165" width="240" height="42" rx="12" fill="url(#limeGrad)"/>
+  <text x="150" y="193" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="24" fill="#04151f" text-anchor="middle" letter-spacing="4">FRESH</text>
+  <text x="150" y="242" font-family="'Inter', sans-serif" font-weight="600" font-size="14" fill="#66fcf1" text-anchor="middle" letter-spacing="2">DE SENASTE HITSEN</text>
+</svg>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="pwrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7b1fa2"/>
+      <stop offset="100%" stop-color="#e91e63"/>
+    </linearGradient>
+    <linearGradient id="yellowPwr" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffeb3b"/>
+      <stop offset="100%" stop-color="#ff9800"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" rx="40" fill="#12051c"/>
+  <path d="M-20 80 L320 0 L320 220 L-20 300 Z" fill="url(#pwrGrad)" opacity="0.35"/>
+  <path d="M190 35 L140 130 L175 130 L110 240 L160 145 L125 145 Z" fill="url(#yellowPwr)"/>
+  <g transform="skewX(-10)">
+    <text x="35" y="130" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="46" fill="url(#yellowPwr)" letter-spacing="-1">POWER</text>
+    <text x="35" y="180" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="38" fill="#ffffff" letter-spacing="1">HIT RADIO</text>
+  </g>
+  <text x="150" y="245" font-family="'Inter', sans-serif" font-weight="700" font-size="14" fill="#ff80ab" text-anchor="middle" letter-spacing="3">SVERIGES DANCE STATION</text>
+</svg>

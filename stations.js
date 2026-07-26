@@ -38,6 +38,60 @@ const GENRES = [
 
 const STATIONS = [
   {
+    id: 'rix-fm',
+    name: 'RIX FM',
+    streamUrl: 'https://fm01-ice.stream.khz.se/fm01_mp3',
+    logo: 'assets/logos/rix-fm.svg',
+    genre: 'Pop',
+    country: 'Sweden',
+    description: 'Sveriges största kommersiella radiostation. Bäst musik just nu!'
+  },
+  {
+    id: 'rix-fm-fresh',
+    name: 'RIX FM Fresh',
+    streamUrl: 'https://wr04-ice.stream.khz.se/wr04_mp3',
+    logo: 'assets/logos/rix-fm-fresh.svg',
+    genre: 'Pop',
+    country: 'Sweden',
+    description: 'De allra senaste hitsen och hetaste nya låtarna dygnet runt.'
+  },
+  {
+    id: 'power-hit-radio',
+    name: 'Power Hit Radio',
+    streamUrl: 'https://fm04-ice.stream.khz.se/fm04_mp3',
+    logo: 'assets/logos/power-hit-radio.svg',
+    genre: 'Electronic',
+    country: 'Sweden',
+    description: 'Sveriges Dance & R&B station. Ren energi dygnet runt.'
+  },
+  {
+    id: 'power-club',
+    name: 'Power Club',
+    streamUrl: 'https://wr06-ice.stream.khz.se/wr06_mp3',
+    logo: 'assets/logos/power-club.svg',
+    genre: 'Electronic',
+    country: 'Sweden',
+    description: 'Klubbmusik, house, techno och festivalbangers för helgkänslan.'
+  },
+  {
+    id: 'hitmix-90s',
+    name: "HitMix 90's",
+    streamUrl: 'https://wr19-ice.stream.khz.se/wr19_mp3',
+    logo: 'assets/logos/hitmix-90s.svg',
+    genre: 'Pop',
+    country: 'Sweden',
+    description: 'Den bästa musiken från 90-talet — Eurodance, Pop & Rock klassiker.'
+  },
+  {
+    id: 'gamla-favoriter',
+    name: 'Gamla Favoriter',
+    streamUrl: 'https://wr09-ice.stream.khz.se/wr09_mp3',
+    logo: 'assets/logos/gamla-favoriter.svg',
+    genre: 'Local',
+    country: 'Sweden',
+    description: 'Låtarna du känner igen. Tidlösa klassiker från 60-, 70- och 80-talet.'
+  },
+  {
     id: 'neon-pop-fm',
     name: 'Neon Pop FM',
     streamUrl: 'https://ice1.somafm.com/poptron-128-mp3',

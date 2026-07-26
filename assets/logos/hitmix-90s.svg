@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <linearGradient id="retroPink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff007f"/>
+      <stop offset="100%" stop-color="#7928ca"/>
+    </linearGradient>
+    <linearGradient id="retroYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffea00"/>
+      <stop offset="100%" stop-color="#ff0055"/>
+    </linearGradient>
+  </defs>
+  <rect width="300" height="300" rx="40" fill="#180424"/>
+  <polygon points="20,40 280,20 250,280 40,260" fill="url(#retroPink)" opacity="0.25"/>
+  <polygon points="220,40 270,90 200,90" fill="#00f2fe" opacity="0.8"/>
+  <circle cx="50" cy="220" r="18" fill="none" stroke="#ffea00" stroke-width="6"/>
+  <text x="25" y="115" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="42" fill="#ffffff" letter-spacing="-1">HIT<tspan fill="#00f2fe">MIX</tspan></text>
+  <rect x="25" y="130" width="250" height="65" rx="14" fill="url(#retroYellow)"/>
+  <text x="150" y="180" font-family="'Sora', 'Arial Black', sans-serif" font-weight="900" font-size="52" fill="#180424" text-anchor="middle" letter-spacing="-1">90'S</text>
+  <text x="150" y="242" font-family="'Inter', sans-serif" font-weight="700" font-size="14" fill="#ffb74d" text-anchor="middle" letter-spacing="3">EURODANCE &amp; POP CLASSICS</text>
+</svg>
