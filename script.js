@@ -308,6 +308,8 @@
 
   const State = {
     stations: getMergedStations(),
+    stationStatuses: {}, // map of stationId -> { ok: boolean, status: string, reason: string }
+    streamMetadata: {}, // map of stationId -> { bitrate, codec, sampleRate, quality, qualityText }
     genres: window.GENRES || ['All'],
     siteContent: Store.get(STORAGE_KEYS.siteContent, null) || { ...DEFAULT_SITE_CONTENT },
     currentView: 'home',
@@ -399,18 +401,20 @@
   }
 
   /* ==========================================================================
-     AUDIO ENGINE — playback, Web Audio API visualizer, auto-reconnect
+     AUDIO ENGINE — playback, Web Audio API visualizer & GainNode, auto-reconnect
      ========================================================================== */
   const AudioEngine = (() => {
     const audioEl = document.getElementById('audio-el');
     let audioCtx = null;
+    let gainNode = null;
     let analyser = null;
     let sourceNode = null;
     let freqData = null;
     let visualizerRAF = null;
     let reconnectTimeoutId = null;
 
-    audioEl.volume = State.volume / 100;
+    try { audioEl.volume = State.volume / 100; } catch (e) {}
+    audioEl.muted = State.isMuted;
 
     function ensureAudioGraph() {
       if (audioCtx) return;
@@ -418,16 +422,21 @@
         const Ctx = window.AudioContext || window.webkitAudioContext;
         audioCtx = new Ctx();
         sourceNode = audioCtx.createMediaElementSource(audioEl);
+        gainNode = audioCtx.createGain();
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 64;
         freqData = new Uint8Array(analyser.frequencyBinCount);
-        sourceNode.connect(analyser);
+
+        sourceNode.connect(gainNode);
+        gainNode.connect(analyser);
         analyser.connect(audioCtx.destination);
+
+        const currentGain = State.isMuted ? 0 : (State.volume / 100);
+        gainNode.gain.setValueAtTime(currentGain, audioCtx.currentTime);
       } catch (e) {
-        // Web Audio API not available / CORS blocked — visualizer will fall back
-        // to CSS-only animation, playback itself is unaffected.
-        console.warn('Web Audio API unavailable, falling back to CSS visualizer only.', e);
+        console.warn('Web Audio API / GainNode unavailable, falling back to standard audio element controls.', e);
         audioCtx = null;
+        gainNode = null;
       }
     }
 
@@ -451,7 +460,7 @@
       if (playPromise && typeof playPromise.catch === 'function') {
         playPromise.catch(err => {
           console.error('Playback failed:', err);
-          handleStreamError('Kunde inte starta uppspelning. Kontrollera din anslutning eller prova en annan station.');
+          handleStreamError('Kunde inte starta uppspelning. Kontrollera din anslutning eller klicka igen.');
         });
       }
     }
@@ -467,17 +476,25 @@
 
     function setVolume(vol) {
       State.volume = vol;
-      audioEl.volume = vol / 100;
-      Store.set(STORAGE_KEYS.volume, vol);
-      if (vol === 0 && !State.isMuted) {
-        // visual-only sync, doesn't force mute state
+      const targetGain = State.isMuted ? 0 : (vol / 100);
+      try { audioEl.volume = vol / 100; } catch (e) {}
+      if (gainNode && audioCtx) {
+        gainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
       }
+      Store.set(STORAGE_KEYS.volume, vol);
+      UI.updateVolumeSliders();
+      UI.updateMuteButtons();
     }
 
     function setMuted(muted) {
       State.isMuted = muted;
       audioEl.muted = muted;
+      const targetGain = muted ? 0 : (State.volume / 100);
+      if (gainNode && audioCtx) {
+        gainNode.gain.setValueAtTime(targetGain, audioCtx.currentTime);
+      }
       UI.updateMuteButtons();
+      UI.updateVolumeSliders();
     }
 
     function handleStreamError(message) {
@@ -590,6 +607,9 @@
       miniTrackTitle: document.getElementById('mini-track-title'),
       miniPlayBtn: document.getElementById('mini-play-btn'),
       miniEq: document.getElementById('mini-eq'),
+      miniVolumeSlider: document.getElementById('mini-volume-slider'),
+      miniMuteBtn: document.getElementById('mini-mute-btn'),
+      miniVolPercent: document.getElementById('mini-vol-percent'),
 
       npOverlay: document.getElementById('now-playing-overlay'),
       npArt: document.getElementById('np-art'),
@@ -598,10 +618,16 @@
       npTrackArtist: document.getElementById('np-track-artist'),
       npGenre: document.getElementById('np-genre'),
       npLiveBadge: document.getElementById('np-live-badge'),
+      npBitrateVal: document.getElementById('np-bitrate-val'),
+      npCodecVal: document.getElementById('np-codec-val'),
+      npRateVal: document.getElementById('np-rate-val'),
+      npQualityVal: document.getElementById('np-quality-val'),
+      npQualityDot: document.getElementById('np-quality-dot'),
       npPlayBtn: document.getElementById('np-play-btn'),
       npFavoriteBtn: document.getElementById('np-favorite-btn'),
       npVolumeSlider: document.getElementById('np-volume-slider'),
       npMuteBtn: document.getElementById('np-mute-btn'),
+      npVolPercent: document.getElementById('np-vol-percent'),
       npError: document.getElementById('np-error-msg'),
       npProgress: document.querySelector('.np-progress'),
       npEq: document.getElementById('np-eq'),
@@ -621,6 +647,7 @@
       settingsAccountUser: document.getElementById('settings-account-user'),
       settingsCurrentUsername: document.getElementById('settings-current-username'),
       settingsCurrentRole: document.getElementById('settings-current-role'),
+      checkStreamsBtn: document.getElementById('check-streams-btn'),
       adminStationsTable: document.getElementById('admin-stations-table'),
       adminUsersTable: document.getElementById('admin-users-table')
     };
@@ -796,12 +823,29 @@
     }
 
     function updateMuteButtons() {
-      const iconOn = document.querySelector('.icon-vol-on');
-      const iconOff = document.querySelector('.icon-vol-off');
-      if (iconOn && iconOff) {
-        iconOn.classList.toggle('is-hidden', State.isMuted);
-        iconOff.classList.toggle('is-hidden', !State.isMuted);
-      }
+      const isMuted = State.isMuted || State.volume === 0;
+      document.querySelectorAll('.icon-vol-on').forEach(icon => {
+        icon.classList.toggle('is-hidden', isMuted);
+      });
+      document.querySelectorAll('.icon-vol-off').forEach(icon => {
+        icon.classList.toggle('is-hidden', !isMuted);
+      });
+      [el.npMuteBtn, el.miniMuteBtn].forEach(btn => {
+        if (!btn) return;
+        btn.setAttribute('aria-label', isMuted ? 'Slå på ljud' : 'Stäng av ljud');
+        btn.classList.toggle('is-active', isMuted);
+      });
+    }
+
+    function updateVolumeSliders() {
+      const vol = State.volume;
+      const displayVal = State.isMuted ? 'MUTE' : `${vol}%`;
+
+      if (el.npVolumeSlider) el.npVolumeSlider.value = vol;
+      if (el.miniVolumeSlider) el.miniVolumeSlider.value = vol;
+
+      if (el.npVolPercent) el.npVolPercent.textContent = displayVal;
+      if (el.miniVolPercent) el.miniVolPercent.textContent = displayVal;
     }
 
     function setConnStatus(status) {
@@ -849,6 +893,164 @@
     }
 
     /* ----- Now playing panel population ----- */
+    function inspectUrlMetadata(station) {
+      if (!station) return { bitrate: '128 kbps', codec: 'MP3', sampleRate: '44.1 kHz', quality: 'standard', qualityText: 'Standard' };
+
+      const url = station.streamUrl || '';
+      let codec = station.codec || '';
+      let bitrate = station.bitrate || '';
+
+      if (!codec) {
+        if (/\.m3u8|hls/i.test(url)) codec = 'AAC (HLS)';
+        else if (/\.aac|\/aac|aacp/i.test(url)) codec = 'AAC';
+        else if (/\.m4a|\/m4a/i.test(url)) codec = 'AAC';
+        else if (/\.ogg|\/ogg/i.test(url)) codec = 'Ogg';
+        else if (/\.flac|\/flac/i.test(url)) codec = 'FLAC';
+        else codec = 'MP3';
+      }
+
+      if (!bitrate) {
+        const brMatch = url.match(/(?:_|\/|-)(\d{2,3})k(?:bps)?(?:\.|\/|$|\?)/i) || url.match(/(320|256|192|160|128|96|64|48)k/i);
+        if (brMatch && brMatch[1]) {
+          bitrate = `${brMatch[1]} kbps`;
+        } else {
+          bitrate = codec.includes('AAC') ? '128 kbps' : '128 kbps';
+        }
+      }
+
+      const brNum = parseInt(bitrate, 10) || 128;
+      let quality = 'standard';
+      let qualityText = 'Standard';
+
+      if (brNum >= 192 || (codec.includes('AAC') && brNum >= 128) || codec.includes('FLAC')) {
+        quality = 'high';
+        qualityText = 'Hög kvalitet';
+      } else if (brNum >= 128) {
+        quality = 'standard';
+        qualityText = 'Standard';
+      } else {
+        quality = 'low';
+        qualityText = 'Låg bitrate';
+      }
+
+      return {
+        bitrate: bitrate.includes('kbps') ? bitrate : `${bitrate} kbps`,
+        codec,
+        sampleRate: '44.1 kHz',
+        quality,
+        qualityText
+      };
+    }
+
+    function renderStreamMetadataUI(meta) {
+      if (!meta) return;
+      if (el.npBitrateVal) el.npBitrateVal.textContent = meta.bitrate || '128 kbps';
+      if (el.npCodecVal) el.npCodecVal.textContent = meta.codec || 'MP3';
+      if (el.npRateVal) el.npRateVal.textContent = meta.sampleRate || '44.1 kHz';
+      if (el.npQualityVal) el.npQualityVal.textContent = meta.qualityText || 'Standard';
+
+      if (el.npQualityDot) {
+        el.npQualityDot.className = 'quality-dot';
+        if (meta.quality === 'high') {
+          // default green dot
+        } else if (meta.quality === 'standard') {
+          el.npQualityDot.classList.add('is-standard');
+        } else if (meta.quality === 'low') {
+          el.npQualityDot.classList.add('is-warning');
+        } else if (meta.quality === 'error') {
+          el.npQualityDot.classList.add('is-error');
+        }
+      }
+    }
+
+    async function probeStreamMetadata(station) {
+      if (!station || !station.id) return;
+
+      const cached = State.streamMetadata[station.id];
+      if (cached && cached.isProbed) {
+        renderStreamMetadataUI(cached);
+        return;
+      }
+
+      const initialMeta = inspectUrlMetadata(station);
+      renderStreamMetadataUI(initialMeta);
+
+      const url = station.streamUrl;
+      if (!url || !url.startsWith('http')) return;
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { 'Range': 'bytes=0-1024' },
+          signal: controller.signal
+        }).catch(() => null);
+
+        clearTimeout(timeoutId);
+
+        let updatedMeta = { ...initialMeta, isProbed: true };
+
+        if (res && res.headers) {
+          const contentType = res.headers.get('content-type') || '';
+          const icyBr = res.headers.get('icy-br') || res.headers.get('x-audiocast-bitrate');
+
+          let detectedCodec = initialMeta.codec;
+          if (contentType.includes('audio/mpeg') || contentType.includes('audio/mp3')) detectedCodec = 'MP3';
+          else if (contentType.includes('audio/aac') || contentType.includes('audio/aacp')) detectedCodec = 'AAC';
+          else if (contentType.includes('audio/ogg')) detectedCodec = 'Ogg';
+          else if (contentType.includes('audio/flac')) detectedCodec = 'FLAC';
+          else if (contentType.includes('mpegurl') || contentType.includes('hls')) detectedCodec = 'AAC (HLS)';
+
+          let detectedBitrate = initialMeta.bitrate;
+          if (icyBr && !isNaN(parseInt(icyBr, 10))) {
+            detectedBitrate = `${parseInt(icyBr, 10)} kbps`;
+          }
+
+          const brNum = parseInt(detectedBitrate, 10) || 128;
+          let quality = 'standard';
+          let qualityText = 'Standard';
+
+          if (brNum >= 192 || (detectedCodec.includes('AAC') && brNum >= 128) || detectedCodec.includes('FLAC')) {
+            quality = 'high';
+            qualityText = 'Hög kvalitet';
+          } else if (brNum >= 128) {
+            quality = 'standard';
+            qualityText = 'Standard';
+          } else {
+            quality = 'low';
+            qualityText = 'Låg bitrate';
+          }
+
+          let sampleRate = initialMeta.sampleRate;
+          if (window.AudioContext || window.webkitAudioContext) {
+            try {
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              if (ctx.sampleRate) {
+                sampleRate = `${(ctx.sampleRate / 1000).toFixed(1)} kHz`;
+              }
+              ctx.close().catch(() => {});
+            } catch (e) {}
+          }
+
+          updatedMeta = {
+            bitrate: detectedBitrate,
+            codec: detectedCodec,
+            sampleRate,
+            quality,
+            qualityText,
+            isProbed: true
+          };
+        }
+
+        State.streamMetadata[station.id] = updatedMeta;
+        renderStreamMetadataUI(updatedMeta);
+      } catch (err) {
+        State.streamMetadata[station.id] = { ...initialMeta, isProbed: true };
+      }
+    }
+
     function updateNowPlayingPanel(station) {
       if (!station) return;
       el.npArt.src = station.logo;
@@ -870,6 +1072,7 @@
       el.miniPlayer.classList.remove('is-hidden');
       hideError();
       updateMediaSession(station);
+      probeStreamMetadata(station);
     }
 
     function updateMediaSession(station) {
@@ -960,21 +1163,162 @@
       sub.value = State.siteContent.heroSub;
     }
 
+    /* ----- Station stream connectivity background check ----- */
+    function renderStatusBadgeHtml(status) {
+      if (!status || status.status === 'checking') {
+        return `<span class="station-status-badge status-checking" title="Kontrollerar anslutning..."><span class="status-spinner"></span> <span>Testar...</span></span>`;
+      }
+      if (status.status === 'error' || !status.ok) {
+        return `<span class="station-status-badge status-error" title="Anslutningsfel / 404: ${escapeHtml(status.reason)}">
+          <svg class="warning-icon" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86l-8.6 14.8A1 1 0 002.55 20h18.9a1 1 0 00.86-1.34l-8.6-14.8a1 1 0 00-1.72 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>${escapeHtml(status.reason || 'Fel')}</span>
+        </span>`;
+      }
+      return `<span class="station-status-badge status-ok" title="Stream online"><span>✓</span> <span>Online</span></span>`;
+    }
+
+    async function checkStationStream(station) {
+      if (!station || !station.streamUrl) {
+        return { ok: false, status: 'error', reason: 'Saknar URL' };
+      }
+      const url = station.streamUrl;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        return { ok: false, status: 'error', reason: 'Ogiltig URL' };
+      }
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const res = await fetch(url, { method: 'GET', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+          return { ok: false, status: 'error', reason: `HTTP ${res.status}` };
+        }
+        return { ok: true, status: 'ok', reason: 'Online' };
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          return { ok: false, status: 'error', reason: 'Timeout' };
+        }
+
+        // Fallback to HTML5 audio probe for media streams or CORS restricted endpoints
+        return new Promise((resolve) => {
+          const testAudio = new Audio();
+          let resolved = false;
+
+          const cleanup = () => {
+            testAudio.pause();
+            testAudio.removeAttribute('src');
+            testAudio.load();
+          };
+
+          const timer = setTimeout(() => {
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              resolve({ ok: false, status: 'error', reason: 'Anslutningsfel' });
+            }
+          }, 5000);
+
+          testAudio.oncanplay = testAudio.oncanplaythrough = testAudio.onloadedmetadata = () => {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              cleanup();
+              resolve({ ok: true, status: 'ok', reason: 'Online' });
+            }
+          };
+
+          testAudio.onerror = () => {
+            if (!resolved) {
+              resolved = true;
+              clearTimeout(timer);
+              cleanup();
+              resolve({ ok: false, status: 'error', reason: 'Stream/404 fel' });
+            }
+          };
+
+          testAudio.crossOrigin = 'anonymous';
+          testAudio.src = url;
+          testAudio.load();
+        });
+      }
+    }
+
+    let isCheckingStreams = false;
+    async function checkAllStationStreams(forceRecheck = false) {
+      if (isCheckingStreams) return;
+      isCheckingStreams = true;
+
+      const btn = el.checkStreamsBtn;
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+      }
+
+      const list = State.stations;
+      list.forEach(s => {
+        if (forceRecheck || !State.stationStatuses[s.id]) {
+          State.stationStatuses[s.id] = { ok: null, status: 'checking', reason: 'Testar...' };
+        }
+      });
+
+      renderAdminStationsTable();
+
+      const toCheck = list.filter(s => forceRecheck || State.stationStatuses[s.id]?.status === 'checking');
+      for (const station of toCheck) {
+        const res = await checkStationStream(station);
+        State.stationStatuses[station.id] = res;
+        updateAdminStationRowStatus(station.id, res);
+      }
+
+      isCheckingStreams = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+    }
+
+    function updateAdminStationRowStatus(stationId, result) {
+      if (!el.adminStationsTable) return;
+      const row = el.adminStationsTable.querySelector(`.admin-row[data-station-id="${stationId}"]`);
+      if (!row) return;
+
+      if (result.status === 'error' || !result.ok) {
+        row.classList.add('has-warning');
+      } else {
+        row.classList.remove('has-warning');
+      }
+
+      const badgeEl = row.querySelector('.station-status-badge');
+      if (badgeEl) {
+        badgeEl.outerHTML = renderStatusBadgeHtml(result);
+      }
+    }
+
     function renderAdminStationsTable() {
       if (!el.adminStationsTable) return;
-      el.adminStationsTable.innerHTML = State.stations.map(s => `
-        <div class="admin-row" data-station-id="${s.id}">
-          <img src="${s.logo}" alt="" loading="lazy" width="36" height="36">
-          <div class="row-meta">
-            <strong>${escapeHtml(s.name)}</strong>
-            <small>${escapeHtml(s.genre)} · ${escapeHtml(s.country)}</small>
+      el.adminStationsTable.innerHTML = State.stations.map(s => {
+        const status = State.stationStatuses[s.id] || { status: 'checking' };
+        const warningClass = (status.status === 'error' || status.ok === false) ? ' has-warning' : '';
+        const badgeHtml = renderStatusBadgeHtml(status);
+
+        return `
+          <div class="admin-row${warningClass}" data-station-id="${s.id}">
+            <img src="${s.logo}" alt="" loading="lazy" width="36" height="36">
+            <div class="row-meta">
+              <strong>${escapeHtml(s.name)}</strong>
+              <small>${escapeHtml(s.genre)} · ${escapeHtml(s.country)}</small>
+            </div>
+            ${badgeHtml}
+            <div class="row-actions">
+              <button type="button" data-action="edit-station" data-station-id="${s.id}">Redigera</button>
+              <button type="button" class="danger" data-action="delete-station" data-station-id="${s.id}">Ta bort</button>
+            </div>
           </div>
-          <div class="row-actions">
-            <button type="button" data-action="edit-station" data-station-id="${s.id}">Redigera</button>
-            <button type="button" class="danger" data-action="delete-station" data-station-id="${s.id}">Ta bort</button>
-          </div>
-        </div>
-      `).join('') || '<p class="empty-state">Inga stationer ännu.</p>';
+        `;
+      }).join('') || '<p class="empty-state">Inga stationer ännu.</p>';
     }
 
     function renderAdminUsersTable() {
@@ -1002,6 +1346,7 @@
       populateSiteContentForm();
       renderAdminStationsTable();
       renderAdminUsersTable();
+      checkAllStationStreams(false);
     }
 
     return {
@@ -1009,11 +1354,11 @@
       stationCardTemplate,
       renderAll, renderHome, renderStationsView, renderFavorites, renderHistory,
       switchView,
-      updatePlayButtons, updateMuteButtons, setConnStatus, setEqPlaying, renderVisualizerFrame,
+      updatePlayButtons, updateMuteButtons, updateVolumeSliders, setConnStatus, setEqPlaying, renderVisualizerFrame,
       showError, hideError, showToast,
       updateNowPlayingPanel, openNowPlaying, closeNowPlaying,
       updateAccentSwatches, updateSleepLabel,
-      syncAccountUI, renderAdminPanel, renderAdminStationsTable, renderAdminUsersTable
+      syncAccountUI, renderAdminPanel, renderAdminStationsTable, renderAdminUsersTable, checkAllStationStreams
     };
   })();
 
@@ -1079,9 +1424,10 @@
     }
 
     function setVolume(vol) {
+      if (vol > 0 && State.isMuted) {
+        State.isMuted = false;
+      }
       AudioEngine.setVolume(vol);
-      UI.el.npVolumeSlider.value = vol;
-      if (vol > 0 && State.isMuted) AudioEngine.setMuted(false);
     }
 
     function toggleMute() {
@@ -1193,10 +1539,16 @@
       });
       document.getElementById('np-share-btn').addEventListener('click', shareCurrentStation);
 
-      // --- Volume / mute ---
-      UI.el.npVolumeSlider.addEventListener('input', (e) => setVolume(Number(e.target.value)));
-      document.getElementById('np-mute-btn').addEventListener('click', toggleMute);
-      UI.el.npVolumeSlider.value = State.volume;
+      // --- Volume / Mute ---
+      const handleVolInput = (e) => setVolume(Number(e.target.value));
+      if (UI.el.npVolumeSlider) UI.el.npVolumeSlider.addEventListener('input', handleVolInput);
+      if (UI.el.miniVolumeSlider) UI.el.miniVolumeSlider.addEventListener('input', handleVolInput);
+
+      if (UI.el.npMuteBtn) UI.el.npMuteBtn.addEventListener('click', toggleMute);
+      if (UI.el.miniMuteBtn) UI.el.miniMuteBtn.addEventListener('click', toggleMute);
+
+      UI.updateVolumeSliders();
+      UI.updateMuteButtons();
 
       // --- Sleep timer modal ---
       const sleepBtn = document.getElementById('sleep-timer-btn');
@@ -1430,6 +1782,9 @@
 
       const adminUsersTable = document.getElementById('admin-users-table');
       if (adminUsersTable) adminUsersTable.addEventListener('click', handleAdminTableClick);
+
+      const checkStreamsBtn = document.getElementById('check-streams-btn');
+      if (checkStreamsBtn) checkStreamsBtn.addEventListener('click', () => UI.checkAllStationStreams(true));
 
       const stationsResetBtn = document.getElementById('stations-reset-btn');
       if (stationsResetBtn) stationsResetBtn.addEventListener('click', handleStationsReset);

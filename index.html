@@ -375,6 +375,13 @@
           <p class="form-msg" id="station-form-msg" role="status"></p>
         </form>
 
+        <div class="table-header-row">
+          <h4 style="margin:0;font-size:0.95rem;font-weight:700;">Befintliga stationer</h4>
+          <button class="btn-secondary btn-sm" id="check-streams-btn" type="button" title="Testa alla anslutningar i bakgrunden">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <span>Testa anslutningar</span>
+          </button>
+        </div>
         <div class="admin-table" id="admin-stations-table"></div>
         <button class="text-btn" id="stations-reset-btn" type="button" style="margin-top:12px;">Återställ till standardstationer</button>
       </div>
@@ -411,6 +418,24 @@
       <h2 id="np-station-name">Ingen station vald</h2>
       <p class="np-track" id="np-track-title">Välj en station för att börja lyssna</p>
       <p class="np-artist" id="np-track-artist"></p>
+
+      <div class="np-specs-row" id="np-specs-row" aria-label="Streaminformation och ljudkvalitet">
+        <span class="np-spec-tag" id="np-spec-bitrate" title="Stream bitrate">
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span id="np-bitrate-val">128 kbps</span>
+        </span>
+        <span class="np-spec-tag" id="np-spec-codec" title="Ljudkodak">
+          <svg viewBox="0 0 24 24" aria-hidden="true" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span id="np-codec-val">MP3</span>
+        </span>
+        <span class="np-spec-tag" id="np-spec-rate" title="Samplingsfrekvens">
+          <span id="np-rate-val">44.1 kHz</span>
+        </span>
+        <span class="np-spec-tag np-spec-quality" id="np-spec-quality" title="Anslutningskvalitet">
+          <span class="quality-dot" id="np-quality-dot"></span>
+          <span id="np-quality-val">Bra kvalitet</span>
+        </span>
+      </div>
     </div>
 
     <div class="np-progress" aria-hidden="true">
@@ -438,11 +463,12 @@
     </div>
 
     <div class="np-volume">
-      <button class="icon-btn icon-btn--sm" id="np-mute-btn" type="button" aria-label="Stäng av ljud">
+      <button class="icon-btn icon-btn--sm" id="np-mute-btn" type="button" aria-label="Stäng av eller slå på ljud">
         <svg class="icon-vol-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M17 8.5a5 5 0 0 1 0 7"/></svg>
         <svg class="icon-vol-off is-hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>
       </button>
       <input type="range" id="np-volume-slider" min="0" max="100" value="80" aria-label="Volym">
+      <span class="vol-percent" id="np-vol-percent">80%</span>
     </div>
 
     <p class="np-error is-hidden" id="np-error-msg" role="alert"></p>
@@ -470,6 +496,14 @@
     <button class="icon-btn icon-btn--sm" id="mini-next-btn" type="button" aria-label="Nästa">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6v12M6 6l10 6-10 6Z"/></svg>
     </button>
+  </div>
+  <div class="mini-volume">
+    <button class="icon-btn icon-btn--sm" id="mini-mute-btn" type="button" aria-label="Stäng av eller slå på ljud">
+      <svg class="icon-vol-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M17 8.5a5 5 0 0 1 0 7"/></svg>
+      <svg class="icon-vol-off is-hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9Z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>
+    </button>
+    <input type="range" id="mini-volume-slider" min="0" max="100" value="80" aria-label="Volym">
+    <span class="vol-percent" id="mini-vol-percent">80%</span>
   </div>
   <div class="eq-bars eq-bars--mini" id="mini-eq" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 </div>
@@ -545,7 +579,7 @@
 <!-- Toast / error notifications -->
 <div class="toast-stack" id="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-<audio id="audio-el" preload="none" crossorigin="anonymous"></audio>
+<audio id="audio-el" preload="none" crossorigin="anonymous" playsinline></audio>
 
 <script src="stations.js"></script>
 <script src="script.js"></script>
