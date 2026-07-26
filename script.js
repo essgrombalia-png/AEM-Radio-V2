@@ -370,8 +370,16 @@
   }
 
   function applySiteContent() {
-    const brandTextEl = document.querySelector('.brand-text');
-    if (brandTextEl) brandTextEl.textContent = State.siteContent.brandName;
+    const brandEls = document.querySelectorAll('.brand-text');
+    brandEls.forEach(brandTextEl => {
+      const name = State.siteContent.brandName || 'AEMRadio';
+      if (name.toUpperCase().startsWith('AEM')) {
+        const rest = name.slice(3) || 'RADIO';
+        brandTextEl.innerHTML = `<span class="brand-aem">AEM</span><em class="brand-sub">${escapeHtml(rest)}</em>`;
+      } else {
+        brandTextEl.textContent = name;
+      }
+    });
     const heroTitleEl = document.querySelector('.hero-copy h1');
     if (heroTitleEl) heroTitleEl.textContent = State.siteContent.heroTitle;
     const heroSubEl = document.querySelector('.hero-sub');
