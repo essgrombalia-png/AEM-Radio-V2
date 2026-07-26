@@ -27,7 +27,8 @@
     users: 'aem_radio_users',
     session: 'aem_radio_session',
     siteContent: 'aem_radio_site_content',
-    customStations: 'aem_radio_custom_stations'
+    customStations: 'aem_radio_custom_stations',
+    pendingSync: 'aem_radio_pending_sync'
   };
 
   const Store = {
@@ -43,14 +44,108 @@
     set(key, value) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
+        if (key !== STORAGE_KEYS.pendingSync && key !== STORAGE_KEYS.session) {
+          if (typeof SyncManager !== 'undefined' && SyncManager.notifyChange) {
+            SyncManager.notifyChange();
+          }
+        }
       } catch (e) {
         console.warn('Store.set failed for', key, e);
       }
     },
     remove(key) {
-      try { localStorage.removeItem(key); } catch (e) { /* noop */ }
+      try {
+        localStorage.removeItem(key);
+        if (key !== STORAGE_KEYS.pendingSync && key !== STORAGE_KEYS.session) {
+          if (typeof SyncManager !== 'undefined' && SyncManager.notifyChange) {
+            SyncManager.notifyChange();
+          }
+        }
+      } catch (e) { /* noop */ }
     }
   };
+
+  /* ==========================================================================
+     SYNC MANAGER — offline pending sync & simulated cloud backup
+     ========================================================================== */
+  const SyncManager = (() => {
+    let pendingCount = Store.get(STORAGE_KEYS.pendingSync, 0);
+    let syncTimer = null;
+
+    function getBadgeEl() { return document.getElementById('sync-badge'); }
+    function getTextEl() { return document.getElementById('sync-badge-text'); }
+
+    function updateUI(state, text) {
+      const badge = getBadgeEl();
+      const txt = getTextEl();
+      if (!badge || !txt) return;
+      badge.setAttribute('data-sync-state', state);
+      txt.textContent = text;
+
+      let title = 'Synkstatus för lokala ändringar.';
+      if (state === 'pending') title = `${pendingCount} ändring(ar) sparade lokalt. Redo att synkas till servern. Klicka för att synka.`;
+      if (state === 'syncing') title = 'Synkar ändringar till servern…';
+      if (state === 'synced') title = 'All data är synkad med servern.';
+      if (state === 'offline') title = `Offline (${pendingCount} sparade ändringar). Klicka för att försöka synka.`;
+      badge.title = title;
+    }
+
+    function notifyChange() {
+      pendingCount++;
+      Store.set(STORAGE_KEYS.pendingSync, pendingCount);
+
+      if (!navigator.onLine) {
+        updateUI('offline', `Offline (${pendingCount})`);
+        return;
+      }
+
+      updateUI('syncing', 'Synkar…');
+      if (syncTimer) clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        pendingCount = 0;
+        Store.set(STORAGE_KEYS.pendingSync, 0);
+        updateUI('synced', 'Synkad');
+      }, 900);
+    }
+
+    function syncNow(manual = false) {
+      if (!navigator.onLine) {
+        updateUI('offline', pendingCount > 0 ? `Offline (${pendingCount})` : 'Offline');
+        if (manual) UI.showToast('Du är offline. Ändringar synkas när anslutningen återställs.', 'error');
+        return;
+      }
+
+      updateUI('syncing', 'Synkar till servern…');
+      if (syncTimer) clearTimeout(syncTimer);
+
+      setTimeout(() => {
+        const count = pendingCount;
+        pendingCount = 0;
+        Store.set(STORAGE_KEYS.pendingSync, 0);
+        updateUI('synced', 'Synkad');
+
+        if (manual) {
+          if (count > 0) {
+            UI.showToast(`Synkning klar! ${count} ändring(ar) säkerhetskopierade till servern.`, 'success');
+          } else {
+            UI.showToast('All lokal data är redan synkad med servern.', 'info');
+          }
+        }
+      }, 1100);
+    }
+
+    function init() {
+      if (!navigator.onLine) {
+        updateUI('offline', pendingCount > 0 ? `Offline (${pendingCount})` : 'Offline');
+      } else if (pendingCount > 0) {
+        syncNow();
+      } else {
+        updateUI('synced', 'Synkad');
+      }
+    }
+
+    return { init, notifyChange, syncNow, getPendingCount: () => pendingCount };
+  })();
 
   /* ==========================================================================
      THEME MANAGER — OS preference detection & theme toggling
@@ -1197,9 +1292,31 @@
         selectStationById(lastId, false);
       }
 
-      // --- Online/offline notices ---
-      window.addEventListener('offline', () => UI.showToast('Du är offline. Uppspelning kan avbrytas.', 'error'));
-      window.addEventListener('online', () => UI.showToast('Anslutning återställd.', 'success'));
+      // --- Initialize Sync Manager ---
+      SyncManager.init();
+
+      // --- Online/offline notices & sync handling ---
+      window.addEventListener('offline', () => {
+        UI.showToast('Du är offline. Ändringar sparas lokalt och synkas när du är online.', 'error');
+        SyncManager.init();
+      });
+
+      window.addEventListener('online', () => {
+        const pending = SyncManager.getPendingCount();
+        if (pending > 0) {
+          UI.showToast(`Anslutning återställd. Synkar ${pending} sparade ändringar…`, 'info');
+        } else {
+          UI.showToast('Anslutning återställd.', 'success');
+        }
+        SyncManager.syncNow();
+      });
+
+      const syncBadge = document.getElementById('sync-badge');
+      if (syncBadge) {
+        syncBadge.addEventListener('click', () => {
+          SyncManager.syncNow(true);
+        });
+      }
 
       // --- Auth & Account Buttons ---
       const openLoginBtn = document.getElementById('open-login-btn');
@@ -1556,13 +1673,20 @@
     Events.init();
     UI.setConnStatus('idle');
 
-    // Register service worker for PWA/offline shell support
+    // Register service worker for PWA/offline shell support with explicit root path & scope
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => {
+      const registerSW = () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then((reg) => {
+          console.log('ServiceWorker registered with scope:', reg.scope);
+        }).catch(err => {
           console.warn('Service worker registration failed:', err);
         });
-      });
+      };
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
     }
   });
 
